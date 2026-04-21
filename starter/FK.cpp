@@ -186,8 +186,12 @@ vector<int> FK::getJointDescendents(int jointID) const
 
 // This is the main function that performs forward kinematics.
 // Each joint has its local transformation relative to the parent joint. 
-// globalTransform of a joint is the transformation that converts a point expressed in the joint's local frame of reference, to the world coordinate frame.
-// localTransform is the transformation that converts a point expressed in the joint's local frame of reference, to the coordinate frame of its parent joint. Specifically, if xLocal is the homogeneous coordinate of a point expressed in the joint's local frame, and xParent is the homogeneous coordinate of the same point expressed in the frame of the joint's parent, we have:
+// globalTransform of a joint is the transformation that converts a point expressed in the joint's local frame of 
+//      reference, to the world coordinate frame.
+// localTransform is the transformation that converts a point expressed in the joint's local frame of reference, 
+//      to the coordinate frame of its parent joint. Specifically, if xLocal is the homogeneous coordinate of a 
+//      point expressed in the joint's local frame, and xParent is the homogeneous coordinate 
+//      of the same point expressed in the frame of the joint's parent, we have:
 // xParent = localTransform * xLocal , and
 // globalTransform = parentGlobalTransform * localTransform .
 // Note that the globalTransform of the root joint equals its localTransform.
@@ -218,8 +222,40 @@ void FK::computeLocalAndGlobalTransforms(
     0, 0, 0, 1 };
   for(int i=0; i<localTransforms.size(); i++)
   {
-    localTransforms[i] = RigidTransform4d(identity);
-    globalTransforms[i] = RigidTransform4d(identity);
+
+      //local transform
+      //eulerAngles and jointOrientationEulerAngles, "euler2Rotation" function.
+      //localTransforms[i] = RigidTransform4d(identity);
+
+      double eulerToMatrix[9] = {};
+      euler2Rotation(eulerAngles[i], eulerToMatrix, rotateOrders[i]);
+      double jointOrientToMatrix[9] = {};
+      euler2Rotation(jointOrientationEulerAngles[i], jointOrientToMatrix, XYZ);
+
+	  Mat3d localRot = asMat3d(jointOrientToMatrix) * asMat3d(eulerToMatrix);
+      localTransforms[i] = RigidTransform4d(localRot, translations[i]);
+
+    //localTransforms[i] = RigidTransform4d(identity);
+    //globalTransforms[i] = RigidTransform4d(identity);
+  }
+
+
+  //recursively compute the globalTransforms, from the root to the leaves of the hierarchy.
+      // Use the jointParents and jointUpdateOrder arrays to do so.
+
+  for (int order = 0; order < jointUpdateOrder.size(); order++)
+  {
+      int i = jointUpdateOrder[order];
+      int parent = jointParents[i];
+
+      if (parent < 0)
+      {
+          globalTransforms[i] = localTransforms[i];
+      }
+      else
+      {
+          globalTransforms[i] = globalTransforms[parent] * localTransforms[i];
+      }
   }
 }
 
