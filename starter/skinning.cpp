@@ -4,10 +4,13 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
+#include <VS2017/DualQuat.h>
+
 using namespace std;
 
 // CSCI 520 Computer Animation and Simulation
 // Jernej Barbic and Yijing Li
+
 
 Skinning::Skinning(int numMeshVertices, const double * restMeshVertexPositions,
     const std::string & meshSkinningWeightsFilename)
@@ -83,29 +86,81 @@ void Skinning::applySkinning(const RigidTransform4d * jointSkinTransforms, doubl
       // Msj is the joint's skinning transform matrix
   for(int i=0; i<numMeshVertices; i++)
   {
-	  Vec4d newPos(0.0, 0.0, 0.0, 0.0);
-
-      for (int joint = 0; joint < numJointsInfluencingEachVertex; joint++)
+      if (!isDualQuaternion)
       {
-		  int jointID = meshSkinningJoints[i * numJointsInfluencingEachVertex + joint];
-		  double weight = meshSkinningWeights[i * numJointsInfluencingEachVertex + joint];
+          Vec4d newPos(0.0, 0.0, 0.0, 0.0);
 
-          Mat4d jointSkinTransformMatrix = jointSkinTransforms[jointID];
-		  Vec4d restMeshVertexPosition = Vec4d(restMeshVertexPositions[3 * i + 0], 
-              restMeshVertexPositions[3 * i + 1], restMeshVertexPositions[3 * i + 2], 1.0);
+          for (int joint = 0; joint < numJointsInfluencingEachVertex; joint++)
+          {
+              int jointID = meshSkinningJoints[i * numJointsInfluencingEachVertex + joint];
+              double weight = meshSkinningWeights[i * numJointsInfluencingEachVertex + joint];
 
-          newPos += weight * (jointSkinTransformMatrix * restMeshVertexPosition);
-		  
+            Mat4d jointSkinTransformMatrix = jointSkinTransforms[jointID];
+            Vec4d restMeshVertexPosition = Vec4d(restMeshVertexPositions[3 * i + 0],
+                restMeshVertexPositions[3 * i + 1], restMeshVertexPositions[3 * i + 2], 1.0);
+
+            newPos += weight * (jointSkinTransformMatrix * restMeshVertexPosition);
+              
+          }
+          newMeshVertexPositions[3 * i + 0] = newPos[0];
+          newMeshVertexPositions[3 * i + 1] = newPos[1];
+          newMeshVertexPositions[3 * i + 2] = newPos[2];
       }
-        newMeshVertexPositions[3 * i + 0] = newPos[0];
-        newMeshVertexPositions[3 * i + 1] = newPos[1];
-        newMeshVertexPositions[3 * i + 2] = newPos[2];
+      else
+      {
+          Vec3d skinnedPos(0.0, 0.0, 0.0);
+          Vec3d restPos(restMeshVertexPositions[3 * i + 0],
+              restMeshVertexPositions[3 * i + 1], restMeshVertexPositions[3 * i + 2]);
+          DualQuat blended;
+          blended.real = Vec4d(0, 0, 0, 0);
+          blended.dual = Vec4d(0, 0, 0, 0);
+
+          int pivotJoint =
+              meshSkinningJoints[i * numJointsInfluencingEachVertex + 0];
+
+          DualQuat dq0 = DualQuat::makeDQ(jointSkinTransforms[pivotJoint]);
+          Vec4d q0 = dq0.real;
 
 
+          for (int joint = 0; joint < numJointsInfluencingEachVertex; joint++)
+          {
+              int jointID = meshSkinningJoints[i * numJointsInfluencingEachVertex + joint];
+              double weight = meshSkinningWeights[i * numJointsInfluencingEachVertex + joint];
 
-    //newMeshVertexPositions[3 * i + 0] = restMeshVertexPositions[3 * i + 0];
-    //newMeshVertexPositions[3 * i + 1] = restMeshVertexPositions[3 * i + 1];
-    //newMeshVertexPositions[3 * i + 2] = restMeshVertexPositions[3 * i + 2];
+              const Mat4d& M = jointSkinTransforms[jointID];
+
+              DualQuat dq = DualQuat::makeDQ(M);
+
+              double dotQR =
+                  dq.real[0] * q0[0] +
+                  dq.real[1] * q0[1] +
+                  dq.real[2] * q0[2] +
+                  dq.real[3] * q0[3];
+
+              if (dotQR < 0.0)
+                  weight = -weight;
+
+              blended.real += weight * dq.real;
+              blended.dual += weight * dq.dual;
+          }
+
+          double norm = sqrt(blended.real[0] * blended.real[0] + blended.real[1] * blended.real[1] +
+              blended.real[2] * blended.real[2] + blended.real[3] * blended.real[3]);
+
+          if (norm > 1e-8)
+          {
+              blended.real /= norm;
+              blended.dual /= norm;
+          }
+
+          skinnedPos = DualQuat::transformPoint(blended, restPos);
+
+          newMeshVertexPositions[3 * i + 0] = skinnedPos[0];
+          newMeshVertexPositions[3 * i + 1] = skinnedPos[1];
+          newMeshVertexPositions[3 * i + 2] = skinnedPos[2];
+
+      }
+
   }
 }
 

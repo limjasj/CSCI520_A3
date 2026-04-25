@@ -223,13 +223,29 @@ void IK::doIK(const Vec3d* targetHandlePositions, Vec3d* jointEulerAngles)
         }   
     }
 
-  double alpha = 1e-3;
+    Eigen::VectorXd delta_theta;
+    if (!isPseudoInverse)
+    {
+        double alpha = 1e-3;
 
-  //(J^TJ + aI)delta_theta = J^T * delta_b
-  Eigen::MatrixXd A = jacobianMatrix.transpose() * jacobianMatrix + alpha * Eigen::MatrixXd::Identity(FKInputDim, FKInputDim);
-  Eigen::VectorXd b = jacobianMatrix.transpose() * delta_b;
+        //(J^TJ + aI)delta_theta = J^T * delta_b
+        Eigen::MatrixXd A = jacobianMatrix.transpose() * jacobianMatrix + alpha * Eigen::MatrixXd::Identity(FKInputDim, FKInputDim);
+        Eigen::VectorXd b = jacobianMatrix.transpose() * delta_b;
 
-  Eigen::VectorXd delta_theta = A.ldlt().solve(b);
+         delta_theta = A.ldlt().solve(b);
+    }
+    else
+    {
+        // Pseudoinverse
+        // delta_theta = J^T (J * J^T)^(-1) delta_b
+        Eigen::MatrixXd JJt = jacobianMatrix * jacobianMatrix.transpose();
+
+        // Solve for x in  (J J^T) x = delta_b
+        Eigen::VectorXd x = JJt.ldlt().solve(delta_b);
+
+        // delta_theta = J^T x
+       delta_theta = jacobianMatrix.transpose() * x;
+	}
 
   //update angles (output)
   for (int i = 0; i < numJoints; i++)

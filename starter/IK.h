@@ -32,6 +32,8 @@ public:
   int getIKInputDim() const { return FKOutputDim; }
   int getIKOutputDim() const { return FKInputDim; }
 
+  bool isPseudoInverse = false;
+
 protected:
   int numIKJoints = 0;
   const int * IKJointIDs = nullptr;

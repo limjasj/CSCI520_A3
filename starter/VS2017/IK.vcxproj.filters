@@ -197,5 +197,8 @@
     <ClInclude Include="..\vega\transform4d.h">
       <Filter>Vega</Filter>
     </ClInclude>
+    <ClInclude Include="DualQuat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

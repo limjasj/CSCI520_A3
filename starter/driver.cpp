@@ -322,6 +322,17 @@ static void keyboardFunc(unsigned char key, int x, int y)
       renderSkeleton = !renderSkeleton;
       break;
 
+
+    case '1':
+		//DUAL QUATERNION SKINNING
+        skinning->isDualQuaternion = true;
+        break;
+
+    case '2':
+        //PSUDOINVERSE ik
+        ik->isPseudoInverse = true;
+        break;
+
     default:
       break;
   }

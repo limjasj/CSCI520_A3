@@ -25,7 +25,8 @@ public:
   // input: jointSkinTransforms
   // output: newMeshVertexPositions (length is 3*numMeshVertices)
   void applySkinning(const RigidTransform4d * jointSkinTransforms, double * newMeshVertexPositions) const;
-
+  
+  bool isDualQuaternion = false;
 protected:
   int numMeshVertices = 0;
   const double * restMeshVertexPositions = nullptr; // length of array is 3 x numMeshVertices

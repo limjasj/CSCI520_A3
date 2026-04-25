@@ -186,6 +186,7 @@
     <ClInclude Include="..\vega\vec3d.h" />
     <ClInclude Include="..\vega\vec4d.h" />
     <ClInclude Include="..\vega\vegalong.h" />
+    <ClInclude Include="DualQuat.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
